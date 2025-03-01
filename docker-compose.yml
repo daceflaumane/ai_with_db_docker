@@ -51,7 +51,7 @@ services:
     networks:
       postgres:
     volumes:
-      - ./:app
+      - .:/app
     command: [ "tail", "-f", "/dev/null" ]
 
 
