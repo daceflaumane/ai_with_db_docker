@@ -1,0 +1,64 @@
+services:
+  postgres:
+    build: ./infra/postgres
+    container_name: my_postgres
+    shm_size: 128mb
+    restart: always
+    
+    # Environment variables to configure Postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_DATABASE}
+
+    
+    # Expose and map the Postgres port
+    ports:
+      - "5432:5432"
+
+    # Volumes allow you to persist data and automatically run init scripts
+    volumes:
+      # Replace init-scripts with the path to your init scripts
+      - ./infra/postgres/init-scripts:/docker-entrypoint-initdb.d
+      
+      # Named volume for persistent storage of your database data
+      - postgres_data:/var/lib/postgresql/data
+    
+    # Check that the server is running
+    healthcheck:
+      test: ["CMD-SHELL", "pg_is_ready -U $${DB_USER} -d $${DB_DATABASE}"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+
+    # Network to connect python to DB
+    networks:
+      postgres:
+
+  # Python app for embedding software
+  python-app:
+    build: ./infra/python
+    container_name: python_app
+    depends_on: 
+      - postgres
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_DATABASE}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      postgres:
+    volumes:
+      - ./:app
+    command: [ "tail", "-f", "/dev/null" ]
+
+
+# The joining network
+networks:
+  postgres:
+
+# Define a named volume for the database files
+volumes:
+  postgres_data:
